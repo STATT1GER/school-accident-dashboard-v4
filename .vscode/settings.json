@@ -1,0 +1,8 @@
+{
+  "python.analysis.extraPaths": [
+    "."
+  ],
+  "files.encoding": "utf8",
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "editor.formatOnSave": true
+}

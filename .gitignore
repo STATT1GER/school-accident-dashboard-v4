@@ -1,0 +1,40 @@
+# Python 가상환경
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 개발환경 임시파일
+.pytest_cache/
+.vscode/*.log
+.DS_Store
+
+# 환경변수 및 비밀정보
+.env
+.env.*
+.streamlit/secrets.toml
+
+# 실제 데이터 보관 폴더
+private_data/
+data/raw/
+data/private/
+
+# data 폴더의 CSV는 기본적으로 제외
+data/*.csv
+
+# 합성 샘플 데이터만 예외적으로 포함
+!data/sample.csv
+
+# 원자료가 될 가능성이 있는 파일
+*.xlsx
+*.xls
+*.hwp
+*.parquet
+*.feather
+*.sav
+
+# 압축파일
+*.zip
+*.7z
+*.rar
