@@ -611,23 +611,6 @@ div[data-testid="stRadio"] div[role="radiogroup"] label p {
     color: var(--ink);
 }
 
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-    background: #ECECF0;
-    border-radius: 14px;
-    padding: 5px;
-}
-
-.stTabs [data-baseweb="tab"] {
-    border-radius: 10px;
-    padding: 8px 18px;
-}
-
-.stTabs [aria-selected="true"] {
-    background: white;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
-}
-
 .stage-strip {
     display: grid;
     grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
@@ -888,4 +871,261 @@ div[data-testid="stDialog"] button[data-testid="stBaseButton-primary"],
 div[data-testid="stDialog"] button[kind="primary"] *,
 div[data-testid="stDialog"] button[data-testid="stBaseButton-primary"] * {
     color: #ffffff !important;
+}
+
+/* =========================================================
+   사고분석 탭 — 미니멀 UI
+========================================================= */
+
+
+/* =========================================================
+   1단계: 최상위 분석 메뉴
+   사고경로 / 시간 분석 / 장소 분석 / 활동·형태
+========================================================= */
+
+div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"] {
+    display: flex !important;
+    align-items: center !important;
+    gap: 26px !important;
+
+    min-height: 48px !important;
+    padding: 0 !important;
+
+    background: transparent !important;
+    border-bottom: 1px solid #E5E5EA !important;
+    border-radius: 0 !important;
+
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+
+    scrollbar-width: none !important;
+}
+
+div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]::-webkit-scrollbar {
+    display: none !important;
+}
+
+
+/* 최상위 탭 기본 상태 */
+div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"] {
+    position: relative !important;
+    flex: 0 0 auto !important;
+
+    min-height: 48px !important;
+    padding: 0 2px !important;
+
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+
+    color: #7A7A80 !important;
+
+    font-size: 13px !important;
+    font-weight: 600 !important;
+
+    box-shadow: none !important;
+}
+
+
+/* 탭 내부 글자 */
+div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"] * {
+    color: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    white-space: nowrap !important;
+}
+
+
+/* 최상위 탭 hover */
+div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"]:hover {
+    color: #1D1D1F !important;
+}
+
+
+/* 최상위 탭 선택 상태 */
+div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"][aria-selected="true"] {
+    color: #0066CC !important;
+    font-weight: 700 !important;
+}
+
+
+/* 선택된 탭의 파란 밑줄 */
+div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"][aria-selected="true"]::after {
+    content: "" !important;
+
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: -1px !important;
+
+    height: 3px !important;
+
+    background: #0066CC !important;
+    border-radius: 999px 999px 0 0 !important;
+}
+
+
+/* Streamlit 기본 선택 표시 제거 */
+div[data-testid="stTabs"] [data-baseweb="tab-highlight"] {
+    display: none !important;
+}
+
+
+/* =========================================================
+   2단계 이하 중첩 탭
+   전체 / 저학년 / 고학년
+========================================================= */
+
+div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"] {
+    display: inline-flex !important;
+    width: auto !important;
+    max-width: 100% !important;
+
+    gap: 3px !important;
+    min-height: auto !important;
+
+    padding: 4px !important;
+    margin: 4px 0 10px !important;
+
+    background: #F0F0F3 !important;
+    border: 0 !important;
+    border-radius: 10px !important;
+
+    overflow-x: auto !important;
+}
+
+
+/* 하위 탭 기본 상태 */
+div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"] {
+    position: static !important;
+
+    min-height: 34px !important;
+    padding: 6px 14px !important;
+
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 7px !important;
+
+    color: #6E6E73 !important;
+
+    font-size: 12px !important;
+    font-weight: 600 !important;
+
+    box-shadow: none !important;
+}
+
+
+/* 하위 탭에서는 파란 밑줄 제거 */
+div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"]::after {
+    display: none !important;
+}
+
+
+/* 하위 탭 hover */
+div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"]:hover {
+    color: #1D1D1F !important;
+    background: rgba(255, 255, 255, 0.55) !important;
+}
+
+
+/* 하위 탭 선택 상태 */
+div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"][aria-selected="true"] {
+    color: #1D1D1F !important;
+    background: #FFFFFF !important;
+
+    font-weight: 700 !important;
+
+    box-shadow:
+        0 1px 2px rgba(0, 0, 0, 0.06),
+        0 2px 7px rgba(0, 0, 0, 0.05) !important;
+}
+
+
+/* 선택된 하위 탭 내부 글자 */
+div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"][aria-selected="true"] * {
+    color: #1D1D1F !important;
+}
+
+
+/* =========================================================
+   3단계 중첩 탭
+   간단히 보기 / 자세히 보기
+========================================================= */
+
+div[data-testid="stTabs"] div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"] {
+    gap: 18px !important;
+
+    padding: 0 0 8px !important;
+    margin: 4px 0 8px !important;
+
+    background: transparent !important;
+    border-bottom: 1px solid #EEEEF1 !important;
+    border-radius: 0 !important;
+}
+
+
+/* 3단계 탭 기본 상태 */
+div[data-testid="stTabs"] div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"] {
+    min-height: 32px !important;
+    padding: 4px 0 !important;
+
+    background: transparent !important;
+    border-radius: 0 !important;
+
+    color: #8E8E93 !important;
+
+    font-size: 12px !important;
+    font-weight: 500 !important;
+
+    box-shadow: none !important;
+}
+
+
+/* 3단계 선택 상태 */
+div[data-testid="stTabs"] div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"][aria-selected="true"] {
+    color: #0066CC !important;
+    background: transparent !important;
+
+    font-weight: 700 !important;
+    box-shadow: none !important;
+}
+
+
+/* 3단계 선택 탭의 작은 밑줄 */
+div[data-testid="stTabs"] div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"][aria-selected="true"]::after {
+    display: block !important;
+    content: "" !important;
+
+    position: absolute !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: -9px !important;
+
+    height: 2px !important;
+
+    background: #0066CC !important;
+    border-radius: 999px !important;
+}
+
+
+/* =========================================================
+   작은 화면
+========================================================= */
+
+@media (max-width: 700px) {
+
+    div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"] {
+        gap: 20px !important;
+    }
+
+    div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"] {
+        min-height: 44px !important;
+        font-size: 12px !important;
+    }
+
+    div[data-testid="stTabs"] div[data-testid="stTabs"]>div>div[data-baseweb="tab-list"]>button[role="tab"] {
+        padding: 6px 11px !important;
+        font-size: 11px !important;
+    }
 }

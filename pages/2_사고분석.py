@@ -52,9 +52,6 @@ st.info(
     "학생 수와 공간 이용량이 반영된 실제 사고확률은 아닙니다."
 )
 
-st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
-path_tab, time_tab, place_tab, activity_tab = st.tabs(["사고경로", "시간 분석", "장소 분석", "활동·형태"])
-
 
 def recommendation_for(activity: str, core_time: str, core_place: str) -> str:
     if "이동" in activity or "보행" in activity:
@@ -73,7 +70,10 @@ def render_path_scope(scope_df: pd.DataFrame, key_prefix: str, scope_name: str) 
         st.info(f"{scope_name} 조건에 해당하는 사고경로가 없습니다.")
         return
 
-    section_header(f"{scope_name} 4단계 사고경로", "사고시간 → 사고장소 → 당시활동 → 사고형태의 연결을 간단히 또는 자세히 확인합니다.")
+    section_header(
+        f"{scope_name} 4단계 사고경로",
+        "사고시간 → 사고장소 → 당시활동 → 사고형태의 연결을 간단히 또는 자세히 확인합니다.",
+    )
     st.markdown(
         """
         <div class="stage-strip">
@@ -82,8 +82,19 @@ def render_path_scope(scope_df: pd.DataFrame, key_prefix: str, scope_name: str) 
         """,
         unsafe_allow_html=True,
     )
-    simple_tab, detail_tab = st.tabs(["간단히 보기 · 단계별 상위 5개", "자세히 보기 · 전체 범주"])
-    with simple_tab:
+
+    view_mode = st.segmented_control(
+        "사고경로 표시 방식",
+        options=["간단히 보기", "자세히 보기"],
+        default="간단히 보기",
+        selection_mode="single",
+        required=True,
+        key=f"{key_prefix}_view_mode",
+        label_visibility="collapsed",
+        width="content",
+    )
+
+    if view_mode == "간단히 보기":
         st.caption("각 단계의 상위 5개 범주만 유지하고 나머지는 ‘기타’로 묶어 핵심 흐름을 빠르게 읽습니다.")
         st.plotly_chart(
             build_sankey(
@@ -97,8 +108,8 @@ def render_path_scope(scope_df: pd.DataFrame, key_prefix: str, scope_name: str) 
             config=PLOT_CONFIG,
             key=f"{key_prefix}_simple_sankey",
         )
-    with detail_tab:
-        st.caption("전체 범주를 유지하되 노드를 단계별로 고정 배치하고 긴 글자는 줄바꿈하여 겹침을 줄였습니다.")
+    else:
+        st.caption("전체 범주를 유지하되 노드를 단계별로 고정 배치하였습니다.")
         st.plotly_chart(
             build_sankey(
                 scope_df,
@@ -137,22 +148,68 @@ def render_path_scope(scope_df: pd.DataFrame, key_prefix: str, scope_name: str) 
         )
 
 
-with path_tab:
-    all_grade_tab, low_grade_tab, high_grade_tab = st.tabs(["전체", "저학년", "고학년"])
-    with all_grade_tab:
-        render_path_scope(filtered, "all_grade", "전체")
-    with low_grade_tab:
-        render_path_scope(filtered[filtered["학년급"] == "저학년"], "low_grade", "저학년")
-    with high_grade_tab:
-        render_path_scope(filtered[filtered["학년급"] == "고학년"], "high_grade", "고학년")
+# st.tabs 대신 실제 선택 버튼을 사용합니다.
+# CSS 내부 구조에 의존하지 않으므로 로컬과 Streamlit Cloud에서 동일하게 표시됩니다.
+st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
+analysis_section = st.segmented_control(
+    "분석 영역",
+    options=["사고경로", "시간 분석", "장소 분석", "활동·형태"],
+    default="사고경로",
+    selection_mode="single",
+    required=True,
+    key="analysis_section_nav",
+    label_visibility="collapsed",
+    width="stretch",
+)
 
-with time_tab:
-    section_header("시간대별 상대 사고집중도", "가장 많은 일과 구간을 100으로 두어 시간대별 사고 건수를 상대적으로 비교합니다.")
-    st.plotly_chart(time_profile(filtered), use_container_width=True, config=PLOT_CONFIG, key="analysis_time_profile")
+if analysis_section == "사고경로":
+    grade_scope = st.segmented_control(
+        "학년군",
+        options=["전체", "저학년", "고학년"],
+        default="전체",
+        selection_mode="single",
+        required=True,
+        key="path_grade_scope",
+        label_visibility="collapsed",
+        width="content",
+    )
+
+    if grade_scope == "저학년":
+        scope_df = filtered[filtered["학년급"] == "저학년"]
+        scope_key = "low_grade"
+        scope_name = "저학년"
+    elif grade_scope == "고학년":
+        scope_df = filtered[filtered["학년급"] == "고학년"]
+        scope_key = "high_grade"
+        scope_name = "고학년"
+    else:
+        scope_df = filtered
+        scope_key = "all_grade"
+        scope_name = "전체"
+
+    render_path_scope(scope_df, scope_key, scope_name)
+
+elif analysis_section == "시간 분석":
+    section_header(
+        "시간대별 상대 사고집중도",
+        "가장 많은 일과 구간을 100으로 두어 시간대별 사고 건수를 상대적으로 비교합니다.",
+    )
+    st.plotly_chart(
+        time_profile(filtered),
+        use_container_width=True,
+        config=PLOT_CONFIG,
+        key="analysis_time_profile",
+    )
+
     section_header("요일 × 사고시간", "요일과 일과 구간의 결합 사고집중도를 넓은 화면으로 제시합니다.")
-    st.plotly_chart(weekday_time_heatmap(filtered), use_container_width=True, config=PLOT_CONFIG, key="analysis_weekday_heatmap")
+    st.plotly_chart(
+        weekday_time_heatmap(filtered),
+        use_container_width=True,
+        config=PLOT_CONFIG,
+        key="analysis_weekday_heatmap",
+    )
 
-with place_tab:
+elif analysis_section == "장소 분석":
     section_header("사고장소 분포", "사고장소별 사고 건수를 전체 너비로 비교합니다.")
     st.plotly_chart(
         category_bar(filtered, "사고장소_정리", 10, 460, PLACE_COLORS),
@@ -162,11 +219,16 @@ with place_tab:
     )
 
     section_header("장소별 상세표")
-    place_table = filtered.groupby("사고장소_정리", observed=False).agg(
-        사고건수=("사고ID", "size"),
-        대표활동=("사고당시활동_정리", lambda x: x.mode().iloc[0] if not x.mode().empty else "-"),
-        대표사고형태=("사고형태_정리", lambda x: x.mode().iloc[0] if not x.mode().empty else "-"),
-    ).sort_values("사고건수", ascending=False).reset_index()
+    place_table = (
+        filtered.groupby("사고장소_정리", observed=False)
+        .agg(
+            사고건수=("사고ID", "size"),
+            대표활동=("사고당시활동_정리", lambda x: x.mode().iloc[0] if not x.mode().empty else "-"),
+            대표사고형태=("사고형태_정리", lambda x: x.mode().iloc[0] if not x.mode().empty else "-"),
+        )
+        .sort_values("사고건수", ascending=False)
+        .reset_index()
+    )
     place_table["비율"] = place_table["사고건수"] / len(filtered)
     st.dataframe(
         place_table.style.format({"사고건수": "{:,}", "비율": "{:.1%}"}),
@@ -174,7 +236,7 @@ with place_tab:
         hide_index=True,
     )
 
-with activity_tab:
+else:
     section_header("장소를 기준으로 사고 당시 활동 탐색", "장소를 선택하면 해당 공간에서 반복되는 활동을 먼저 보여줍니다.")
     place_options = ["전체 장소"] + sorted(filtered["사고장소_정리"].dropna().unique().tolist())
     selected_place = st.selectbox("사고장소 선택", place_options, key="activity_place")
@@ -197,5 +259,4 @@ with activity_tab:
         config=PLOT_CONFIG,
         key="form_by_activity_bar",
     )
-
 

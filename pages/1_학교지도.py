@@ -7,8 +7,9 @@ from pathlib import Path
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
+
 from components.cards import insight_card, kpi_card, risk_row
-from components.layout import footer, init_page, page_header, section_header, show_viewport_guide
+from components.layout import footer, init_page, page_header, section_header
 from components.sankey import top_paths
 from utils.color import PLOT_CONFIG
 from utils.helper import asset_path, mode_or
@@ -31,28 +32,44 @@ CONCENTRATION_COLORSCALE = [
     [1.00, "rgba(255,69,58,0.72)"],
 ]
 
+# assets/school_map.png의 실제 크기: 1600 × 900 (16:9)
+# Plotly 데이터 좌표도 같은 종횡비로 고정합니다.
+MAP_IMAGE_WIDTH = 1600.0
+MAP_IMAGE_HEIGHT = 900.0
+MAP_X_MAX = 100.0
+MAP_Y_MAX = MAP_X_MAX * MAP_IMAGE_HEIGHT / MAP_IMAGE_WIDTH  # 56.25
+
+
+def map_y_to_plot_y(value: float) -> float:
+    """이미지 기준 위쪽 0~아래쪽 100 좌표를 Plotly 표준 Y좌표로 변환합니다."""
+    return (100.0 - float(value)) * MAP_Y_MAX / 100.0
+
 
 def build_concentration_surface(
     agg,
     grid_size: int = 180,
     sigma_x: float = 4.8,
-    sigma_y: float = 5.8,
+    sigma_y_percent: float = 5.8,
 ):
     """
-    지도구역 중심점과 상대 사고집중도를 이용해 등고선용 표면을 만듭니다.
+    지도구역 중심점과 상대 사고집중도로 등고선 표면을 만듭니다.
 
-    기존 Histogram2dContour처럼 개별 jitter 좌표를 다시 집계하지 않고,
-    원형 마커와 동일한 지도구역 중심점·상대 사고집중도를 사용합니다.
-    따라서 마커 중심과 등고선 중심이 동일하게 맞춰집니다.
+    X축은 0~100, Y축은 지도 이미지의 실제 16:9 비율에 맞춘
+    0~56.25 좌표계를 사용합니다. 등고선, 마커, 배경 이미지가 모두
+    같은 데이터 축을 사용하므로 브라우저 폭이나 Streamlit 배포환경이
+    달라져도 위치가 어긋나지 않습니다.
     """
-    grid_x = np.linspace(0, 100, grid_size)
-    grid_y = np.linspace(0, 100, grid_size)
+    grid_x = np.linspace(0, MAP_X_MAX, grid_size)
+    grid_y = np.linspace(0, MAP_Y_MAX, grid_size)
     xx, yy = np.meshgrid(grid_x, grid_y)
     surface = np.zeros_like(xx, dtype=float)
 
+    # 기존 0~100 세로좌표에서 사용하던 퍼짐 정도를 16:9 좌표로 환산
+    sigma_y = sigma_y_percent * MAP_Y_MAX / 100.0
+
     for row in agg.itertuples(index=False):
         x0 = float(row.지도X)
-        y0 = float(row.지도Y)
+        y0 = float(row.지도Y_플롯)
         concentration = float(row.상대사고집중도)
 
         zone_surface = concentration * np.exp(
@@ -63,8 +80,6 @@ def build_concentration_surface(
             )
         )
 
-        # 공간이 가까워도 농도를 단순 합산해 100을 넘기지 않도록
-        # 각 지점에서 가장 큰 공간 신호를 사용합니다.
         surface = np.maximum(surface, zone_surface)
 
     return grid_x, grid_y, surface
@@ -234,6 +249,11 @@ agg = (
 maximum = max(int(agg["사고건수"].max()), 1)
 agg["상대사고집중도"] = agg["사고건수"] / maximum * 100
 
+# 원자료의 지도Y는 이미지의 위쪽이 0, 아래쪽이 100입니다.
+# Plotly는 아래쪽이 0인 좌표계를 사용하므로 명시적으로 변환합니다.
+# 축 자체를 뒤집는 방식보다 배포환경과 Plotly 버전에 덜 민감합니다.
+agg["지도Y_플롯"] = agg["지도Y"].map(map_y_to_plot_y)
+
 fig = go.Figure()
 
 # ------------------------------------------------------------
@@ -244,12 +264,14 @@ fig = go.Figure()
 fig.add_layout_image(
     dict(
         source=school_map_uri,
-        xref="paper",
-        yref="paper",
+
+        # 핵심: paper 좌표가 아니라 등고선·마커와 동일한 데이터 축 사용
+        xref="x",
+        yref="y",
         x=0,
-        y=1,
-        sizex=1,
-        sizey=1,
+        y=MAP_Y_MAX,
+        sizex=MAP_X_MAX,
+        sizey=MAP_Y_MAX,
         xanchor="left",
         yanchor="top",
         sizing="stretch",
@@ -308,7 +330,7 @@ fig.add_trace(
 fig.add_trace(
     go.Scatter(
         x=agg["지도X"],
-        y=agg["지도Y"],
+        y=agg["지도Y_플롯"],
         mode="markers+text",
         text=agg["지도구역"],
         textposition="top center",
@@ -344,26 +366,33 @@ fig.add_trace(
 # ------------------------------------------------------------
 # 4-4. 축과 레이아웃
 # ------------------------------------------------------------
-# 지도 좌표는 이미지의 왼쪽 위를 (0, 0), 오른쪽 아래를 (100, 100)으로
-# 해석하므로 Y축을 반대로 설정합니다.
+# 이미지, 등고선, 중심 마커가 같은 x/y 데이터 좌표를 사용합니다.
+# 실제 지도 종횡비(16:9)는 scaleanchor로 고정합니다.
 fig.update_xaxes(
-    range=[0, 100],
+    range=[0, MAP_X_MAX],
     visible=False,
     fixedrange=True,
     showgrid=False,
     zeroline=False,
+    constrain="domain",
 )
 
 fig.update_yaxes(
-    range=[100, 0],
+    range=[0, MAP_Y_MAX],
     visible=False,
     fixedrange=True,
     showgrid=False,
     zeroline=False,
+
+    # X와 Y의 1단위를 같은 픽셀 크기로 고정하여
+    # 1600×900 지도 종횡비를 모든 화면에서 유지합니다.
+    scaleanchor="x",
+    scaleratio=1,
+    constrain="domain",
 )
 
 fig.update_layout(
-    height=650,
+    height=570,
     margin=dict(
         l=0,
         r=74,
