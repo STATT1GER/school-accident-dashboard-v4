@@ -1,0 +1,36 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.python-version', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.streamlit/config.toml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.vscode/launch.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.vscode/settings.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'V4_DESIGN_SPEC.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'assets/style.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/cards.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/charts.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/filters.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/layout.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'components/sankey.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'data/sample.csv', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'pyproject.toml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'requirements.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'utils/color.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'utils/helper.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'utils/loader.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'utils/preprocess.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'uv.lock', LF will be replaced by CRLF the next time Git touches it
+ README.md                                          |    71 [32m+[m[31m-[m
+ V4_DESIGN_SPEC.md                                  |   301 [32m+[m[31m-[m
+ app.py                                             |    27 [32m+[m[31m-[m
+ assets/style.css                                   |    80 [32m+[m[31m-[m
+ "chool safety dashboard v4\357\200\242"            |    29 [31m-[m
+ components/cards.py                                |    41 [32m+[m[31m-[m
+ components/charts.py                               |    44 [32m+[m[31m-[m
+ components/sankey.py                               |   106 [32m+[m[31m-[m
+ data/sample.csv                                    | 10002 [32m+++++++++[m[31m----------[m
+ ...225\210\354\240\204\354\203\201\355\231\251.py" |    71 [31m-[m
+ ...225\231\352\265\220\354\247\200\353\217\204.py" |   132 [31m-[m
+ ...202\254\352\263\240\353\266\204\354\204\235.py" |   186 [31m-[m
+ utils/preprocess.py                                |     8 [32m+[m[31m-[m
+ 13 files changed, 5321 insertions(+), 5777 deletions(-)

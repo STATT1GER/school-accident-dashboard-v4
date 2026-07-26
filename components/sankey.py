@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import textwrap
+
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -7,12 +9,26 @@ from utils.color import APPLE_BLUE, APPLE_BLUE_LIGHT, SUCCESS, WARNING, INK
 
 STAGES = ["사고시간_정리", "사고장소_정리", "사고당시활동_정리", "사고형태_정리"]
 STAGE_COLORS = [APPLE_BLUE, APPLE_BLUE_LIGHT, SUCCESS, WARNING]
+STAGE_X = [0.02, 0.31, 0.60, 0.88]
 
 
 def _rgba(hex_color: str, alpha: float) -> str:
     h = hex_color.lstrip("#")
     r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
     return f"rgba({r},{g},{b},{alpha})"
+
+
+def _wrap_label(value: object, width: int = 9) -> str:
+    text = str(value)
+    if len(text) <= width:
+        return text
+    return "<br>".join(textwrap.wrap(text, width=width, break_long_words=True, break_on_hyphens=False))
+
+
+def _stage_y(count: int) -> list[float]:
+    if count <= 1:
+        return [0.5]
+    return [(idx + 0.5) / count for idx in range(count)]
 
 
 def build_sankey(
@@ -37,51 +53,95 @@ def build_sankey(
             else:
                 work = work[work[col].isin(keep)]
 
+    link_records: list[tuple[int, str, str, int]] = []
+    used_keys: set[str] = set()
+    for stage_idx in range(len(STAGES) - 1):
+        source_col, target_col = STAGES[stage_idx], STAGES[stage_idx + 1]
+        links = work.groupby([source_col, target_col], observed=False).size().reset_index(name="count")
+        links = links[links["count"] >= max(1, min_count)]
+        for _, row in links.iterrows():
+            source_value = str(row[source_col])
+            target_value = str(row[target_col])
+            source_key = f"{stage_idx}|{source_value}"
+            target_key = f"{stage_idx + 1}|{target_value}"
+            used_keys.update([source_key, target_key])
+            link_records.append((stage_idx, source_value, target_value, int(row["count"])))
+
+    if not link_records:
+        fig = go.Figure()
+        fig.add_annotation(text="현재 표시 기준을 충족하는 사고경로가 없습니다.", showarrow=False, x=0.5, y=0.5)
+        fig.update_layout(height=height, paper_bgcolor="rgba(0,0,0,0)")
+        return fig
+
     labels: list[str] = []
+    original_labels: list[str] = []
     colors: list[str] = []
+    node_x: list[float] = []
+    node_y: list[float] = []
     node_index: dict[str, int] = {}
+    stage_node_counts: list[int] = []
+
     for stage_idx, col in enumerate(STAGES):
-        values = list(work[col].value_counts().index)
-        for value in values:
+        ordered_values = [
+            str(value)
+            for value in work[col].value_counts().index
+            if f"{stage_idx}|{value}" in used_keys
+        ]
+        stage_node_counts.append(len(ordered_values))
+        y_values = _stage_y(len(ordered_values))
+        for value, y_value in zip(ordered_values, y_values):
             key = f"{stage_idx}|{value}"
             node_index[key] = len(labels)
-            labels.append(value)
+            labels.append(_wrap_label(value))
+            original_labels.append(value)
             colors.append(_rgba(STAGE_COLORS[stage_idx], 0.92))
+            node_x.append(STAGE_X[stage_idx])
+            node_y.append(y_value)
 
     sources: list[int] = []
     targets: list[int] = []
     values: list[int] = []
     link_colors: list[str] = []
-    for stage_idx in range(len(STAGES) - 1):
-        link = work.groupby([STAGES[stage_idx], STAGES[stage_idx + 1]], observed=False).size().reset_index(name="count")
-        link = link[link["count"] >= max(1, min_count)]
-        for _, row in link.iterrows():
-            source_key = f"{stage_idx}|{row[STAGES[stage_idx]]}"
-            target_key = f"{stage_idx + 1}|{row[STAGES[stage_idx + 1]]}"
-            if source_key not in node_index or target_key not in node_index:
-                continue
-            sources.append(node_index[source_key])
-            targets.append(node_index[target_key])
-            values.append(int(row["count"]))
-            link_colors.append(_rgba(STAGE_COLORS[stage_idx], 0.18))
+    link_customdata: list[str] = []
+    for stage_idx, source_value, target_value, count in link_records:
+        source_key = f"{stage_idx}|{source_value}"
+        target_key = f"{stage_idx + 1}|{target_value}"
+        if source_key not in node_index or target_key not in node_index:
+            continue
+        sources.append(node_index[source_key])
+        targets.append(node_index[target_key])
+        values.append(count)
+        link_colors.append(_rgba(STAGE_COLORS[stage_idx], 0.18))
+        link_customdata.append(f"{source_value} → {target_value}")
 
+    dynamic_height = max(height, max(stage_node_counts, default=1) * 56 + 120)
     fig = go.Figure(go.Sankey(
-        arrangement="snap",
+        arrangement="fixed",
         node=dict(
-            pad=18, thickness=18,
+            pad=26,
+            thickness=18,
             line=dict(color="rgba(0,0,0,0)", width=0),
-            label=labels, color=colors,
-            hovertemplate="%{label}<extra></extra>",
+            label=labels,
+            customdata=original_labels,
+            color=colors,
+            x=node_x,
+            y=node_y,
+            hovertemplate="<b>%{customdata}</b><extra></extra>",
         ),
         link=dict(
-            source=sources, target=targets, value=values, color=link_colors,
-            hovertemplate="%{source.label} → %{target.label}<br><b>%{value:,}건</b><extra></extra>",
+            source=sources,
+            target=targets,
+            value=values,
+            color=link_colors,
+            customdata=link_customdata,
+            hovertemplate="%{customdata}<br><b>%{value:,}건</b><extra></extra>",
         ),
     ))
     fig.update_layout(
-        height=height, margin=dict(l=18, r=18, t=28, b=20),
+        height=dynamic_height,
+        margin=dict(l=34, r=96, t=30, b=24),
         paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, Pretendard, sans-serif", color=INK, size=12),
+        font=dict(family="Inter, Pretendard, sans-serif", color=INK, size=11),
     )
     return fig
 

@@ -3,13 +3,12 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from components.cards import kpi_card, path_card
-from components.charts import category_bar, floor_distribution, time_profile, weekday_time_heatmap
+from components.cards import intervention_card, kpi_card, path_card
+from components.charts import category_bar, time_profile, weekday_time_heatmap
 from components.filters import analysis_filters, apply_filters
 from components.layout import footer, init_page, page_header, section_header
 from components.sankey import build_sankey, top_paths
 from utils.color import PLACE_COLORS, PLOT_CONFIG
-from utils.helper import mode_or
 from utils.loader import load_sample_data
 
 init_page("사고분석", "📊")
@@ -18,7 +17,7 @@ df = load_sample_data()
 page_header(
     "PATH-FIRST ACCIDENT ANALYTICS",
     "사고분석",
-    "사고경로를 첫 화면에 배치하고, 시간·장소·활동·사고형태는 경로를 해석하기 위한 보조 분석으로 제공합니다.",
+    "사고 반복 경로를 첫 화면에 배치하고, 시간·장소·활동·사고형태는 우선 개입 지점을 해석하기 위한 보조 분석으로 제공합니다.",
     "4-STAGE FLOW · V4",
 )
 
@@ -29,23 +28,44 @@ if filtered.empty:
     st.stop()
 
 paths = top_paths(filtered, 12)
-peak_time = mode_or(filtered, "사고시간_정리")
-hot_place = mode_or(filtered, "사고장소_정리")
 top_path_share = float(paths.iloc[0]["비율"]) if not paths.empty else 0.0
-risk_index = min(100, round(48 + filtered["사고시간_정리"].value_counts(normalize=True).iloc[0] * 75 + filtered["사고장소_정리"].value_counts(normalize=True).iloc[0] * 65 + top_path_share * 100))
+if not paths.empty:
+    top_stages = [part.strip() for part in str(paths.iloc[0]["사고경로"]).split("→")]
+else:
+    top_stages = ["-", "-", "-", "-"]
+while len(top_stages) < 4:
+    top_stages.append("-")
+peak_time, hot_place = top_stages[0], top_stages[1]
 
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    kpi_card("분석 신호", f"{len(filtered):,}건", "필터 적용", "blue")
+    kpi_card("분석 사고 신호", f"{len(filtered):,}건", "필터 적용", "blue")
 with c2:
-    kpi_card("핵심 위험시간", peak_time, "최빈 구간", "orange")
+    kpi_card("핵심 위험시간", peak_time, "대표 경로 기준", "orange")
 with c3:
-    kpi_card("핵심 위험장소", hot_place, "우선 점검", "blue")
+    kpi_card("핵심 위험장소", hot_place, "대표 경로 기준", "blue")
 with c4:
-    kpi_card("상대 위험도", f"{risk_index}", f"대표 경로 {top_path_share:.1%}", "purple")
+    kpi_card("대표 사고경로 비중", f"{top_path_share:.1%}", "선택 범위 내 최빈 경로", "purple")
+
+st.info(
+    "상대 사고집중도는 선택한 범위에서 사고 건수가 가장 많은 구간을 100으로 환산한 비교지표입니다. "
+    "학생 수와 공간 이용량이 반영된 실제 사고확률은 아닙니다."
+)
 
 st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
 path_tab, time_tab, place_tab, activity_tab = st.tabs(["사고경로", "시간 분석", "장소 분석", "활동·형태"])
+
+
+def recommendation_for(activity: str, core_time: str, core_place: str) -> str:
+    if "이동" in activity or "보행" in activity:
+        return f"{core_time}이 시작되기 전 {core_place}의 이동 방향을 안내하고, 계단 입구와 복도 교차지점의 대기를 줄이며 필요 시 교사 관찰 위치를 배치합니다."
+    if "놀이" in activity or "휴식" in activity:
+        return f"{core_time} 전 {core_place}에서 활동 가능 공간과 이동공간을 분리하고, 학생 간 접촉이 집중되는 구역의 놀이 규칙을 안내합니다."
+    if "구기" in activity or "라켓" in activity or "체육" in activity:
+        return f"{core_time} 활동 시작 전 {core_place}의 종목별 공간과 출입동선을 분리하고, 동시 이용인원과 장비 사용규칙을 안내합니다."
+    if "수업" in activity or "실습" in activity:
+        return f"{core_time} 수업 시작 전 {core_place}의 장비와 활동공간을 점검하고, 학생 간 작업 간격과 이동순서를 안내합니다."
+    return f"{core_time}이 시작되기 전 {core_place}의 이용인원과 이동동선을 확인하고, 대표 사고경로가 완성되기 전 관찰·안내·공간분리 조치를 배치합니다."
 
 
 def render_path_scope(scope_df: pd.DataFrame, key_prefix: str, scope_name: str) -> None:
@@ -53,7 +73,7 @@ def render_path_scope(scope_df: pd.DataFrame, key_prefix: str, scope_name: str) 
         st.info(f"{scope_name} 조건에 해당하는 사고경로가 없습니다.")
         return
 
-    section_header(f"{scope_name} 4단계 사고경로", "시간 → 장소 → 활동 → 사고형태의 연결을 간단히 또는 자세히 확인합니다.")
+    section_header(f"{scope_name} 4단계 사고경로", "사고시간 → 사고장소 → 당시활동 → 사고형태의 연결을 간단히 또는 자세히 확인합니다.")
     st.markdown(
         """
         <div class="stage-strip">
@@ -78,7 +98,7 @@ def render_path_scope(scope_df: pd.DataFrame, key_prefix: str, scope_name: str) 
             key=f"{key_prefix}_simple_sankey",
         )
     with detail_tab:
-        st.caption("합성 데이터에 존재하는 전체 범주를 유지하여 세부 연결과 상대적으로 작은 경로까지 확인합니다.")
+        st.caption("전체 범주를 유지하되 노드를 단계별로 고정 배치하고 긴 글자는 줄바꿈하여 겹침을 줄였습니다.")
         st.plotly_chart(
             build_sankey(
                 scope_df,
@@ -95,26 +115,25 @@ def render_path_scope(scope_df: pd.DataFrame, key_prefix: str, scope_name: str) 
     scope_paths = top_paths(scope_df, 12)
     left, right = st.columns([1.0, 1.0], gap="large")
     with left:
-        section_header("상위 사고경로")
+        section_header("상위 사고경로 TOP 5")
         for idx, row in scope_paths.head(5).iterrows():
             path_card(row["사고경로"], int(row["사고건수"]), float(row["비율"]), idx + 1)
     with right:
-        section_header("경로 상세 탐색")
-        selected_path = st.selectbox("확인할 경로", scope_paths["사고경로"].tolist(), key=f"{key_prefix}_path_select")
-        selected = scope_paths[scope_paths["사고경로"] == selected_path].iloc[0]
-        st.markdown(
-            f"""
-            <div class='detail-card'>
-                <div class='detail-label'>SELECTED PATH · {scope_name}</div>
-                <h3>{selected_path}</h3>
-                <div class='detail-metrics'>
-                    <div><b>{int(selected['사고건수']):,}</b><span>합성 신호</span></div>
-                    <div><b>{float(selected['비율']):.1%}</b><span>해당 범위 비중</span></div>
-                </div>
-                <p>시간과 장소만 따로 보지 않고, 이 경로가 완성되는 활동 전환 지점에 교사 관찰·동선 분리·활동 규칙을 배치합니다.</p>
-            </div>
-            """,
-            unsafe_allow_html=True,
+        section_header("사고 발생을 줄이기 위한 추천 개입 지점")
+        top_row = scope_paths.iloc[0]
+        stages = [part.strip() for part in str(top_row["사고경로"]).split("→")]
+        while len(stages) < 4:
+            stages.append("-")
+        core_time, core_place, activity, accident_form = stages[:4]
+        intervention_card(
+            scope_name=scope_name,
+            core_time=core_time,
+            core_place=core_place,
+            activity=activity,
+            accident_form=accident_form,
+            recommendation=recommendation_for(activity, core_time, core_place),
+            count=int(top_row["사고건수"]),
+            share=float(top_row["비율"]),
         )
 
 
@@ -128,19 +147,19 @@ with path_tab:
         render_path_scope(filtered[filtered["학년급"] == "고학년"], "high_grade", "고학년")
 
 with time_tab:
-    section_header("시간대별 상대 위험 프로파일", "가장 높은 일과 구간을 100으로 두어 상대 위험도를 비교합니다.")
+    section_header("시간대별 상대 사고집중도", "가장 많은 일과 구간을 100으로 두어 시간대별 사고 건수를 상대적으로 비교합니다.")
     st.plotly_chart(time_profile(filtered), use_container_width=True, config=PLOT_CONFIG, key="analysis_time_profile")
-    section_header("요일 × 사고시간", "월별 추이는 제거하고, 요일과 일과 구간의 결합 위험을 넓은 화면으로 제시합니다.")
+    section_header("요일 × 사고시간", "요일과 일과 구간의 결합 사고집중도를 넓은 화면으로 제시합니다.")
     st.plotly_chart(weekday_time_heatmap(filtered), use_container_width=True, config=PLOT_CONFIG, key="analysis_weekday_heatmap")
 
 with place_tab:
-    c1, c2 = st.columns([1.35, 0.65], gap="large")
-    with c1:
-        section_header("사고장소 분포", "상위 장소를 사고건수 기준으로 정렬했습니다.")
-        st.plotly_chart(category_bar(filtered, "사고장소_정리", 10, 440, PLACE_COLORS), use_container_width=True, config=PLOT_CONFIG, key="place_bar")
-    with c2:
-        section_header("층별 분포")
-        st.plotly_chart(floor_distribution(filtered), use_container_width=True, config=PLOT_CONFIG, key="floor_donut")
+    section_header("사고장소 분포", "사고장소별 사고 건수를 전체 너비로 비교합니다.")
+    st.plotly_chart(
+        category_bar(filtered, "사고장소_정리", 10, 460, PLACE_COLORS),
+        use_container_width=True,
+        config=PLOT_CONFIG,
+        key="place_bar",
+    )
 
     section_header("장소별 상세표")
     place_table = filtered.groupby("사고장소_정리", observed=False).agg(
@@ -168,7 +187,7 @@ with activity_tab:
         key="activity_by_place_bar",
     )
 
-    section_header("선택 활동의 사고형태", "교사가 이해하기 쉬운 단일 분포로 활동 이후 나타나는 사고형태를 확인합니다.")
+    section_header("선택 활동의 사고형태", "장소 → 활동 → 사고형태 순서로 사고 흐름을 확인합니다.")
     activity_options = activity_df["사고당시활동_정리"].value_counts().index.tolist()
     selected_activity = st.selectbox("사고 당시 활동 선택", activity_options, key="activity_form_select")
     form_df = activity_df[activity_df["사고당시활동_정리"] == selected_activity]
@@ -179,7 +198,7 @@ with activity_tab:
         key="form_by_activity_bar",
     )
 
-section_header("합성 데이터 미리보기", "심각도는 유추하지 않으며 사고경로 구성에 필요한 필드만 표시합니다.")
+section_header("합성 데이터 미리보기", "실제 원자료는 포함하지 않으며 사고경로 구성에 필요한 필드만 표시합니다.")
 preview_cols = ["사고일자", "학년", "학년급", "사고시간_정리", "사고장소_정리", "사고당시활동_정리", "사고형태_정리"]
 st.dataframe(filtered[preview_cols].sort_values("사고일자", ascending=False).head(100), use_container_width=True, hide_index=True)
 

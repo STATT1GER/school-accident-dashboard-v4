@@ -57,7 +57,7 @@ def path_card(path: str, count: int, share: float, rank: int = 1) -> None:
             <div class="path-rank">#{rank}</div>
             <div class="path-content">
                 <div class="path-route">{html.escape(path)}</div>
-                <div class="path-meta">{count:,}건 · 전체 경로의 {share:.1%}</div>
+                <div class="path-meta">{count:,}건 · 해당 범위의 {share:.1%}</div>
             </div>
             <div class="path-arrow">→</div>
         </div>
@@ -66,27 +66,30 @@ def path_card(path: str, count: int, share: float, rank: int = 1) -> None:
     )
 
 
-def path_focus_card(path: str, count: int, share: float, label: str = "핵심 사고경로") -> None:
-    stages = [part.strip() for part in str(path).split("→")]
-    while len(stages) < 4:
-        stages.append("-")
-    stage_names = ["시간", "장소", "활동", "사고형태"]
-    stage_html = ""
-    for idx, (stage_name, value) in enumerate(zip(stage_names, stages[:4])):
-        arrow = "<div class='path-focus-arrow'>→</div>" if idx < 3 else ""
-        stage_html += (
-            "<div class='path-focus-stage'>"
-            f"<span>{html.escape(stage_name)}</span><b>{html.escape(value)}</b>"
-            "</div>" + arrow
-        )
+def intervention_card(
+    scope_name: str,
+    core_time: str,
+    core_place: str,
+    activity: str,
+    accident_form: str,
+    recommendation: str,
+    count: int,
+    share: float,
+) -> None:
     st.markdown(
         f"""
-        <div class="path-focus-card">
-            <div class="path-focus-top">
-                <div><span>{html.escape(label)}</span><h3>반복되는 4단계 위험 흐름</h3></div>
-                <div class="path-focus-metric"><b>{count:,}건</b><span>{share:.1%}</span></div>
+        <div class="intervention-card">
+            <div class="intervention-label">RECOMMENDED INTERVENTION · {html.escape(scope_name)}</div>
+            <div class="intervention-grid">
+                <div><span>핵심 위험시간</span><b>{html.escape(core_time)}</b></div>
+                <div><span>핵심 위험장소</span><b>{html.escape(core_place)}</b></div>
             </div>
-            <div class="path-focus-grid">{stage_html}</div>
+            <div class="intervention-point">
+                <span>우선 개입 시점</span>
+                <strong>{html.escape(core_time)} · {html.escape(core_place)}</strong>
+            </div>
+            <div class="intervention-context">{html.escape(activity)} → {html.escape(accident_form)} · {count:,}건 ({share:.1%})</div>
+            <p>{html.escape(recommendation)}</p>
         </div>
         """,
         unsafe_allow_html=True,
