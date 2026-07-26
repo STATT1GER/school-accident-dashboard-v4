@@ -38,113 +38,301 @@ def build_sankey(
     aggregate_other: bool = True,
     height: int = 620,
 ) -> go.Figure:
+
     work = df[STAGES].dropna().astype(str).copy()
+
     if work.empty:
         fig = go.Figure()
-        fig.add_annotation(text="표시할 사고경로가 없습니다.", showarrow=False, x=0.5, y=0.5)
-        fig.update_layout(height=height, paper_bgcolor="rgba(0,0,0,0)")
+        fig.add_annotation(
+            text="표시할 사고경로가 없습니다.",
+            showarrow=False,
+            x=0.5,
+            y=0.5
+        )
+        fig.update_layout(
+            height=height,
+            paper_bgcolor="rgba(0,0,0,0)"
+        )
         return fig
 
+    # ========================================================
+    # 단계별 상위 범주만 유지
+    # ========================================================
+
     if top_n_per_stage is not None:
+
         for col in STAGES:
-            keep = set(work[col].value_counts().head(top_n_per_stage).index)
+
+            keep = set(
+                work[col]
+                .value_counts()
+                .head(top_n_per_stage)
+                .index
+            )
+
             if aggregate_other:
-                work[col] = work[col].where(work[col].isin(keep), "기타")
+
+                work[col] = work[col].where(
+                    work[col].isin(keep),
+                    "기타"
+                )
+
             else:
-                work = work[work[col].isin(keep)]
+
+                work = work[
+                    work[col].isin(keep)
+                ].copy()
+
+    # ========================================================
+    # 단계 간 연결 빈도 계산
+    # ========================================================
 
     link_records: list[tuple[int, str, str, int]] = []
     used_keys: set[str] = set()
+
     for stage_idx in range(len(STAGES) - 1):
-        source_col, target_col = STAGES[stage_idx], STAGES[stage_idx + 1]
-        links = work.groupby([source_col, target_col], observed=False).size().reset_index(name="count")
-        links = links[links["count"] >= max(1, min_count)]
+
+        source_col = STAGES[stage_idx]
+        target_col = STAGES[stage_idx + 1]
+
+        links = (
+            work
+            .groupby(
+                [source_col, target_col],
+                observed=False
+            )
+            .size()
+            .reset_index(name="count")
+        )
+
+        links = links[
+            links["count"] >= max(1, min_count)
+        ]
+
         for _, row in links.iterrows():
+
             source_value = str(row[source_col])
             target_value = str(row[target_col])
+
             source_key = f"{stage_idx}|{source_value}"
             target_key = f"{stage_idx + 1}|{target_value}"
-            used_keys.update([source_key, target_key])
-            link_records.append((stage_idx, source_value, target_value, int(row["count"])))
+
+            used_keys.update([
+                source_key,
+                target_key
+            ])
+
+            link_records.append(
+                (
+                    stage_idx,
+                    source_value,
+                    target_value,
+                    int(row["count"])
+                )
+            )
 
     if not link_records:
+
         fig = go.Figure()
-        fig.add_annotation(text="현재 표시 기준을 충족하는 사고경로가 없습니다.", showarrow=False, x=0.5, y=0.5)
-        fig.update_layout(height=height, paper_bgcolor="rgba(0,0,0,0)")
+
+        fig.add_annotation(
+            text="현재 표시 기준을 충족하는 사고경로가 없습니다.",
+            showarrow=False,
+            x=0.5,
+            y=0.5
+        )
+
+        fig.update_layout(
+            height=height,
+            paper_bgcolor="rgba(0,0,0,0)"
+        )
+
         return fig
+
+    # ========================================================
+    # 노드 구성
+    # ========================================================
 
     labels: list[str] = []
     original_labels: list[str] = []
     colors: list[str] = []
     node_x: list[float] = []
-    node_y: list[float] = []
+
     node_index: dict[str, int] = {}
     stage_node_counts: list[int] = []
 
     for stage_idx, col in enumerate(STAGES):
+
         ordered_values = [
             str(value)
             for value in work[col].value_counts().index
             if f"{stage_idx}|{value}" in used_keys
         ]
-        stage_node_counts.append(len(ordered_values))
-        y_values = _stage_y(len(ordered_values))
-        for value, y_value in zip(ordered_values, y_values):
+
+        stage_node_counts.append(
+            len(ordered_values)
+        )
+
+        for value in ordered_values:
+
             key = f"{stage_idx}|{value}"
+
             node_index[key] = len(labels)
-            labels.append(_wrap_label(value))
+
+            labels.append(
+                _wrap_label(value)
+            )
+
             original_labels.append(value)
-            colors.append(_rgba(STAGE_COLORS[stage_idx], 0.92))
-            node_x.append(STAGE_X[stage_idx])
-            node_y.append(y_value)
+
+            colors.append(
+                _rgba(
+                    STAGE_COLORS[stage_idx],
+                    0.92
+                )
+            )
+
+            # 단계별 가로 위치만 고정
+            node_x.append(
+                STAGE_X[stage_idx]
+            )
+
+    # ========================================================
+    # 링크 구성
+    # ========================================================
 
     sources: list[int] = []
     targets: list[int] = []
     values: list[int] = []
     link_colors: list[str] = []
     link_customdata: list[str] = []
-    for stage_idx, source_value, target_value, count in link_records:
+
+    for (
+        stage_idx,
+        source_value,
+        target_value,
+        count
+    ) in link_records:
+
         source_key = f"{stage_idx}|{source_value}"
         target_key = f"{stage_idx + 1}|{target_value}"
-        if source_key not in node_index or target_key not in node_index:
-            continue
-        sources.append(node_index[source_key])
-        targets.append(node_index[target_key])
-        values.append(count)
-        link_colors.append(_rgba(STAGE_COLORS[stage_idx], 0.18))
-        link_customdata.append(f"{source_value} → {target_value}")
 
-    dynamic_height = max(height, max(stage_node_counts, default=1) * 56 + 120)
-    fig = go.Figure(go.Sankey(
-        arrangement="fixed",
-        node=dict(
-            pad=26,
-            thickness=18,
-            line=dict(color="rgba(0,0,0,0)", width=0),
-            label=labels,
-            customdata=original_labels,
-            color=colors,
-            x=node_x,
-            y=node_y,
-            hovertemplate="<b>%{customdata}</b><extra></extra>",
-        ),
-        link=dict(
-            source=sources,
-            target=targets,
-            value=values,
-            color=link_colors,
-            customdata=link_customdata,
-            hovertemplate="%{customdata}<br><b>%{value:,}건</b><extra></extra>",
-        ),
-    ))
+        if (
+            source_key not in node_index
+            or target_key not in node_index
+        ):
+            continue
+
+        sources.append(
+            node_index[source_key]
+        )
+
+        targets.append(
+            node_index[target_key]
+        )
+
+        values.append(count)
+
+        link_colors.append(
+            _rgba(
+                STAGE_COLORS[stage_idx],
+                0.18
+            )
+        )
+
+        link_customdata.append(
+            f"{source_value} → {target_value}"
+        )
+
+    # 노드 수가 많을수록 높이 확대
+    max_stage_nodes = max(
+        stage_node_counts,
+        default=1
+    )
+
+    dynamic_height = max(
+        height,
+        max_stage_nodes * 78 + 180
+    )
+
+    # ========================================================
+    # Sankey 생성
+    # ========================================================
+
+    fig = go.Figure(
+        go.Sankey(
+
+            # fixed 대신 snap 사용
+            # 노드 높이와 흐름을 고려해 자동 배치
+            arrangement="snap",
+
+            textfont=dict(
+                color="#111111",
+                size=11,
+                family="Inter, Pretendard, sans-serif"
+            ),
+
+            node=dict(
+
+                # 노드 사이 픽셀 간격
+                pad=34,
+
+                thickness=18,
+
+                line=dict(
+                    color="rgba(0,0,0,0)",
+                    width=0
+                ),
+
+                label=labels,
+                customdata=original_labels,
+                color=colors,
+
+                # x만 지정하고 y는 지정하지 않음
+                x=node_x,
+
+                hovertemplate=(
+                    "<b>%{customdata}</b>"
+                    "<extra></extra>"
+                ),
+            ),
+
+            link=dict(
+                source=sources,
+                target=targets,
+                value=values,
+                color=link_colors,
+                customdata=link_customdata,
+
+                hovertemplate=(
+                    "%{customdata}<br>"
+                    "<b>%{value:,}건</b>"
+                    "<extra></extra>"
+                ),
+            ),
+        )
+    )
+
     fig.update_layout(
         height=dynamic_height,
-        margin=dict(l=34, r=96, t=30, b=24),
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Inter, Pretendard, sans-serif", color=INK, size=11),
-    )
-    return fig
 
+        margin=dict(
+            l=40,
+            r=120,
+            t=40,
+            b=30
+        ),
+
+        paper_bgcolor="rgba(0,0,0,0)",
+
+        font=dict(
+            family="Inter, Pretendard, sans-serif",
+            color=INK,
+            size=11
+        ),
+    )
+
+    return fig
 
 def top_paths(df: pd.DataFrame, top_n: int = 10) -> pd.DataFrame:
     if df.empty:

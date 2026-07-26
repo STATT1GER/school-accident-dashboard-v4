@@ -16,7 +16,9 @@ def init_page(title: str, icon: str = "🛡️") -> None:
     css_path = asset_path("style.css")
     st.markdown(f"<style>{css_path.read_text(encoding='utf-8')}</style>", unsafe_allow_html=True)
     render_sidebar()
+    show_viewport_guide()
 
+ 
 
 def render_sidebar() -> None:
     with st.sidebar:
@@ -80,3 +82,56 @@ def footer() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+@st.dialog("화면 표시 안내")
+def _show_viewport_dialog() -> None:
+    st.markdown(
+        """
+        이 대시보드는 넓은 화면에 최적화되어 있습니다.
+
+        화면에서 글자나 그래프가 겹치거나 오른쪽으로 밀려 보인다면
+        브라우저 화면 비율을 조정해 주세요.
+        """
+    )
+
+    st.info(
+        """
+        **권장 화면 비율: 80%~100%**
+
+        - 화면 축소: `Ctrl` + `-`
+        - 화면 확대: `Ctrl` + `+`
+        - 기본 비율로 복원: `Ctrl` + `0`
+
+        Mac에서는 `Ctrl` 대신 `⌘ Command`를 사용해 주세요.
+        """
+    )
+
+    st.caption(
+        "화면이 정상적으로 보이면 별도의 조정 없이 그대로 이용하셔도 됩니다."
+    )
+
+    if st.button(
+        "대시보드 시작하기",
+        type="primary",
+        use_container_width=True,
+        key="viewport_guide_close",
+    ):
+        st.rerun()
+
+
+def show_viewport_guide() -> None:
+    """
+    사용자가 앱에 처음 접속했을 때 화면 비율 안내 팝업을 한 번 표시합니다.
+
+    페이지 이동이나 위젯 조작으로 앱이 다시 실행되더라도
+    동일한 접속 세션에서는 다시 표시하지 않습니다.
+    """
+
+    state_key = "viewport_guide_seen"
+
+    if not st.session_state.get(state_key, False):
+        # 팝업을 호출하기 전에 True로 바꿔야
+        # 사용자가 X 버튼으로 닫더라도 다음 실행에서 반복되지 않습니다.
+        st.session_state[state_key] = True
+        _show_viewport_dialog()
+

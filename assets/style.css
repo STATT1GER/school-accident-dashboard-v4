@@ -799,6 +799,7 @@ div[data-testid="stRadio"] div[role="radiogroup"] label p {
         flex-direction: column;
     }
 }
+
 .intervention-card {
     background: #1D1D1F;
     color: white;
@@ -876,4 +877,15 @@ div[data-testid="stRadio"] div[role="radiogroup"] label p {
     .intervention-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* =========================================================
+   화면 표시 안내 팝업 - 시작 버튼 글자색
+========================================================= */
+
+div[data-testid="stDialog"] button[kind="primary"],
+div[data-testid="stDialog"] button[data-testid="stBaseButton-primary"],
+div[data-testid="stDialog"] button[kind="primary"] *,
+div[data-testid="stDialog"] button[data-testid="stBaseButton-primary"] * {
+    color: #ffffff !important;
 }

@@ -198,8 +198,4 @@ with activity_tab:
         key="form_by_activity_bar",
     )
 
-section_header("합성 데이터 미리보기", "실제 원자료는 포함하지 않으며 사고경로 구성에 필요한 필드만 표시합니다.")
-preview_cols = ["사고일자", "학년", "학년급", "사고시간_정리", "사고장소_정리", "사고당시활동_정리", "사고형태_정리"]
-st.dataframe(filtered[preview_cols].sort_values("사고일자", ascending=False).head(100), use_container_width=True, hide_index=True)
 
-footer()
