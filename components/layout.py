@@ -110,6 +110,31 @@ def _show_viewport_dialog() -> None:
         "화면이 정상적으로 보이면 별도의 조정 없이 그대로 이용하셔도 됩니다."
     )
 
+    st.markdown(
+        """
+        <div style="
+            margin-top: 14px;
+            margin-bottom: 16px;
+            padding: 13px 15px;
+            background: #F5F5F7;
+            border: 1px solid #E5E5EA;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #1D1D1F;
+        ">
+            <b>대시보드 관련 문의</b><br>
+            대시보드가 정상적으로 작동하지 않는다면
+            <a href="tel:01065637891"
+               style="color:#0066CC; font-weight:700; text-decoration:none;">
+                010-6563-7891
+            </a>
+            으로 연락 혹은 문자 부탁드립니다.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     if st.button(
         "대시보드 시작하기",
         type="primary",
@@ -117,7 +142,6 @@ def _show_viewport_dialog() -> None:
         key="viewport_guide_close",
     ):
         st.rerun()
-
 
 def show_viewport_guide() -> None:
     """
